@@ -58,8 +58,7 @@ local function on_primary_attack(lp, weapon)
 	
 	local weapon_class = weapon:GetClass()
 
-	if not ignore_weapon_base:GetBool() then
-		
+	if not ignore_weapon_base:GetBool() then	
 		if string.StartsWith(weapon_class, "arc9_") and isfunction(weapon.GetProcessedValue) then
 			local recoil = (weapon:GetProcessedValue("RecoilUp") + weapon:GetProcessedValue("RecoilSide")) * weapon:GetProcessedValue("Recoil") * 0.75
 
@@ -164,6 +163,11 @@ hook.Add("InitPostEntity", "uss_load_mults", function()
 		file.Write("uss_custom_mult.json", "{}") 
 	end
 	custom_mult = util.JSONToTable(file.Read("uss_custom_mult.json"))
+
+	if not GetConVar("mat_motion_blur_enabled"):GetBool() then
+		LocalPlayer():ConCommand("mat_motion_blur_enabled 1")
+		LocalPlayer():ConCommand("mat_motion_blur_strength 0")
+	end
 end)
 
 hook.Add("Think", "uss_calculate", function()
@@ -239,4 +243,10 @@ hook.Add("Think", "uss_detect_fire", function()
 	
 	previous_ammo = current_ammo
 	previous_weapon = weapon
+end)
+
+hook.Add("GetMotionBlurValues", "uss_motion_blur", function( x, y, w, z)
+	w = math.abs(-fov_push / 80)
+
+	return x,y,w,z
 end)
