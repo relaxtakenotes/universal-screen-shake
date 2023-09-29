@@ -5,6 +5,7 @@ local default_shake_target = CreateConVar("cl_screenshake_default_shake_target",
 local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2")
 local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0")
 local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0")
+local motion_blur_mult = CreateConVar("cl_screenshake_motion_blur_mult", "1")
 
 local frac = 0
 
@@ -246,7 +247,29 @@ hook.Add("Think", "uss_detect_fire", function()
 end)
 
 hook.Add("GetMotionBlurValues", "uss_motion_blur", function( x, y, w, z)
-	w = math.abs(-fov_push / 80)
+	if frac <= 0 then return end
+
+	w = math.abs(-fov_push / 80 * motion_blur_mult:GetFloat())
 
 	return x,y,w,z
+end)
+
+hook.Add("PopulateToolMenu", "uss_settings_populate", function()
+    spawnmenu.AddToolMenuOption("Options", "uss_tool", "uss_main_options", "Settings", nil, nil, function(panel)
+        panel:ClearControls()
+
+		panel:CheckBox("Enabled","cl_screenshake_enabled")
+		panel:CheckBox("Ignore Weapon Recoil","cl_screenshake_ignore_weapon_base")
+		panel:CheckBox("Force compatibility mode", "cl_screenshake_hook_compatibility")
+
+		panel:NumSlider("Fov Push Multiplier", "cl_screenshake_fov_mult", 0, 10, 2)
+		panel:NumSlider("Shake Multiplier", "cl_screenshake_shake_mult", 0, 10, 2)
+		panel:NumSlider("Default Shake Value", "cl_screenshake_default_shake_target", -30, 30, 1)
+		panel:NumSlider("Default Fov Push Value", "cl_screenshake_default_fov_push", -10, 10, 2)
+		panel:NumSlider("Motion Blur Multiplier", "cl_screenshake_motion_blur_mult", 0, 10, 2)
+    end)
+end)
+
+hook.Add("AddToolMenuCategories", "uss_add_category", function() 
+    spawnmenu.AddToolCategory("Options", "uss_tool", "Screen Shake")
 end)
