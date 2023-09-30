@@ -6,6 +6,7 @@ local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2")
 local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0")
 local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0")
 local motion_blur_mult = CreateConVar("cl_screenshake_motion_blur_mult", "1")
+local vm_shake_mult = CreateConVar("cl_screenshake_viewmodel_shake_mult", "1")
 
 local frac = 0
 
@@ -51,58 +52,6 @@ end
 
 local function unclamped_lerp(t, from, to)
 	return from + (to - from) * t
-end
-
-local function on_primary_attack(lp, weapon)
-	shake_target = default_shake_target:GetFloat()
-	fov_push_target = default_fov_push:GetFloat()
-	
-	local weapon_class = weapon:GetClass()
-
-	if not ignore_weapon_base:GetBool() then	
-		if string.StartsWith(weapon_class, "arc9_") and isfunction(weapon.GetProcessedValue) then
-			local recoil = (weapon:GetProcessedValue("RecoilUp") + weapon:GetProcessedValue("RecoilSide")) * weapon:GetProcessedValue("Recoil") * 0.75
-
-			shake_target = math.Clamp(recoil * 2, -30, 30)
-			fov_push_target = math.Clamp(recoil * 2, -30, 30)
-		elseif string.StartsWith(weapon_class, "tfa_") and isfunction(weapon.GetStat) then
-			local recoil = (weapon:GetStat("Primary.KickUp") + weapon:GetStat("Primary.KickHorizontal")) * 1.5
-
-			shake_target = math.Clamp(recoil * 2, -30, 30)
-			fov_push_target = math.Clamp(recoil * 2, -30, 30)
-		elseif string.StartsWith(weapon_class, "mg_") and isfunction(weapon.CalculateRecoil) then
-			local _recoil = weapon:CalculateRecoil()
-			local recoil = math.abs(_recoil.x) + math.abs(_recoil.y)
-
-			shake_target = math.Clamp(recoil, -30, 30)
-			fov_push_target = math.Clamp(recoil, -30, 30)
-		elseif string.StartsWith(weapon_class, "arccw_") and weapon.RecoilAmount then
-			local recoil = weapon.RecoilAmount * 1.5
-
-			shake_target = math.Clamp(recoil, -30, 30)
-			fov_push_target = math.Clamp(recoil, -30, 30)
-		end
-	end
-
-	if math.Rand(0, 1) > 0.7 then
-		shake_target = shake_target * -1
-	end
-	
-	if math.Rand(0, 1) > 0.7 then
-		fov_push_target = fov_push_target * -1
-	end
-
-	local custom_shake = 1
-	local custom_fov_push = 1
-	if custom_mult[weapon_class] then
-		custom_shake = custom_mult[weapon_class][1]
-		custom_fov_push = custom_mult[weapon_class][2]
-	end
-
-	shake_target = shake_target * shake_mult:GetFloat() * custom_shake
-	fov_push_target = fov_push_target * fov_mult:GetFloat() * custom_fov_push
-
-	frac = 1 // the part that actually starts the shake
 end
 
 concommand.Add("cl_screenshake_set_custom_mult", function(ply, cmd, args, arg_str)
@@ -183,9 +132,9 @@ hook.Add("Think", "uss_calculate", function()
 	shake.z = unclamped_lerp(elastic_quad_ease(frac), 0, shake_target)
 	fov_push = unclamped_lerp(elastic_quad_ease(frac), 0, fov_push_target)
 
-	if math.abs(shake.z) < 0.001 and math.abs(fov_push) < 0.001 then
-		frac = 0
-	end
+	//if math.abs(shake.z) < 0.001 and math.abs(fov_push) < 0.001 then
+	//	frac = 0
+	//end
 	
 	if not compatible then
 		if frac <= 0 and not fov_reset then
@@ -202,6 +151,18 @@ hook.Add("Think", "uss_calculate", function()
 		lp:SetEyeAngles(lp:EyeAngles() + shake - last_shake)
 		last_shake.z = shake.z
 	end
+
+end)
+
+local vm_shake_target = Angle()
+local vm_shake = Angle()
+
+hook.Add("CalcViewModelView", "uss_apply_vm", function(weapon, vm, old_pos, old_ang, pos, ang) 
+	if frac <= 0 then return end
+
+	vm_shake_target = Angle(0, 0, shake.z * -5 * vm_shake_mult:GetFloat())
+	vm_shake = LerpAngle(FrameTime() * 10, vm_shake, vm_shake_target)
+	ang:Add(vm_shake)
 
 end)
 
@@ -223,6 +184,65 @@ hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, 
 
 	return view
 end)
+
+local function on_primary_attack(lp, weapon)
+	shake_target = default_shake_target:GetFloat()
+	fov_push_target = default_fov_push:GetFloat()
+	
+	local weapon_class = weapon:GetClass()
+
+	if not ignore_weapon_base:GetBool() then	
+		if string.StartsWith(weapon_class, "arc9_") and isfunction(weapon.GetProcessedValue) then
+			local recoil = (weapon:GetProcessedValue("RecoilUp") + weapon:GetProcessedValue("RecoilSide")) * weapon:GetProcessedValue("Recoil") * 0.75
+
+			shake_target = math.Clamp(recoil * 2, -30, 30)
+			fov_push_target = math.Clamp(recoil * 2, -30, 30)
+		elseif string.StartsWith(weapon_class, "tfa_") and isfunction(weapon.GetStat) then
+			local recoil = (weapon:GetStat("Primary.KickUp") + weapon:GetStat("Primary.KickHorizontal")) * 1.5
+
+			shake_target = math.Clamp(recoil * 2, -30, 30)
+			fov_push_target = math.Clamp(recoil * 2, -30, 30)
+		elseif string.StartsWith(weapon_class, "mg_") and isfunction(weapon.CalculateRecoil) then
+			local _recoil = weapon:CalculateRecoil()
+			local recoil = math.abs(_recoil.x) + math.abs(_recoil.y)
+
+			shake_target = math.Clamp(recoil, -30, 30)
+			fov_push_target = math.Clamp(recoil, -30, 30)
+		elseif string.StartsWith(weapon_class, "arccw_") and weapon.RecoilAmount then
+			local recoil = weapon.RecoilAmount * 1.5
+
+			shake_target = math.Clamp(recoil, -30, 30)
+			fov_push_target = math.Clamp(recoil, -30, 30)
+		elseif string.StartsWith(weapon_class, "tacrp_") and isfunction(weapon.GetRecoilAmount) then
+			local recoil = math.Clamp(weapon:GetRecoilAmount() / weapon:GetValue("RecoilMaximum"), 0.3, 1) ^ 1.5
+
+			recoil = math.max(recoil, 0.3)
+
+			shake_target = math.Clamp(recoil * 2, -30, 30)
+			fov_push_target = math.Clamp(recoil * 3, -30, 30)			
+		end
+	end
+
+	if math.Rand(0, 1) > 0.7 then
+		shake_target = shake_target * -1
+	end
+	
+	if math.Rand(0, 1) > 0.7 then
+		fov_push_target = fov_push_target * -1
+	end
+
+	local custom_shake = 1
+	local custom_fov_push = 1
+	if custom_mult[weapon_class] then
+		custom_shake = custom_mult[weapon_class][1]
+		custom_fov_push = custom_mult[weapon_class][2]
+	end
+
+	shake_target = shake_target * shake_mult:GetFloat() * custom_shake
+	fov_push_target = fov_push_target * fov_mult:GetFloat() * custom_fov_push
+
+	frac = 1 // the part that actually starts the shake
+end
 
 hook.Add("Think", "uss_detect_fire", function()
 	if not enabled:GetBool() then return end
@@ -264,6 +284,7 @@ hook.Add("PopulateToolMenu", "uss_settings_populate", function()
 
 		panel:NumSlider("Fov Push Multiplier", "cl_screenshake_fov_mult", 0, 10, 2)
 		panel:NumSlider("Shake Multiplier", "cl_screenshake_shake_mult", 0, 10, 2)
+		panel:NumSlider("Viewmodel Shake Multiplier", "cl_screenshake_viewmodel_shake_mult", 0, 10, 2)
 		panel:NumSlider("Default Shake Value", "cl_screenshake_default_shake_target", -30, 30, 1)
 		panel:NumSlider("Default Fov Push Value", "cl_screenshake_default_fov_push", -10, 10, 2)
 		panel:NumSlider("Motion Blur Multiplier", "cl_screenshake_motion_blur_mult", 0, 10, 2)
