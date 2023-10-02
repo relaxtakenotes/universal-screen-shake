@@ -1,21 +1,21 @@
-local enabled = CreateConVar("cl_screenshake_enabled", "1")
+local enabled = CreateConVar("cl_screenshake_enabled", "1", FCVAR_ARCHIVE)
 
-local fov_mult = CreateConVar("cl_screenshake_fov_mult", "1")
-local shake_mult = CreateConVar("cl_screenshake_shake_mult", "1")
-local default_shake_target = CreateConVar("cl_screenshake_default_shake_target", "2")
-local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2")
+local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0", FCVAR_ARCHIVE)
+local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0", FCVAR_ARCHIVE)
 
-local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0")
-local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0")
+local fov_mult = CreateConVar("cl_screenshake_fov_mult", "1", FCVAR_ARCHIVE)
+local shake_mult = CreateConVar("cl_screenshake_shake_mult", "1", FCVAR_ARCHIVE)
+local default_shake_target = CreateConVar("cl_screenshake_default_shake_target", "2", FCVAR_ARCHIVE)
+local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2", FCVAR_ARCHIVE)
 
-local motion_blur_enabled = CreateConVar("cl_screenshake_motion_blur_enabled", "1")
-local motion_blur_mult = CreateConVar("cl_screenshake_motion_blur_mult", "1")
+local motion_blur_enabled = CreateConVar("cl_screenshake_motion_blur_enabled", "1", FCVAR_ARCHIVE)
+local motion_blur_mult = CreateConVar("cl_screenshake_motion_blur_mult", "1", FCVAR_ARCHIVE)
 
-local vm_shake_enabled = CreateConVar("cl_screenshake_viewmodel_shake_enabled", "1")
-local vm_shake_mult = CreateConVar("cl_screenshake_viewmodel_shake_mult", "1")
+local vm_shake_enabled = CreateConVar("cl_screenshake_viewmodel_shake_enabled", "1", FCVAR_ARCHIVE)
+local vm_shake_mult = CreateConVar("cl_screenshake_viewmodel_shake_mult", "1", FCVAR_ARCHIVE)
 
-local move_back_enabled = CreateConVar("cl_screenshake_move_back_enabled", "1")
-local move_back_mult = CreateConVar("cl_screenshake_move_back_mult", "1")
+local move_back_enabled = CreateConVar("cl_screenshake_move_back_enabled", "1", FCVAR_ARCHIVE)
+local move_back_mult = CreateConVar("cl_screenshake_move_back_mult", "1", FCVAR_ARCHIVE)
 
 local frac = 0
 
