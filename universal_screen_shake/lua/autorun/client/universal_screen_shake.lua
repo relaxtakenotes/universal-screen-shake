@@ -1,12 +1,21 @@
 local enabled = CreateConVar("cl_screenshake_enabled", "1")
+
 local fov_mult = CreateConVar("cl_screenshake_fov_mult", "1")
 local shake_mult = CreateConVar("cl_screenshake_shake_mult", "1")
 local default_shake_target = CreateConVar("cl_screenshake_default_shake_target", "2")
 local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2")
+
 local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0")
 local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0")
+
+local motion_blur_enabled = CreateConVar("cl_screenshake_motion_blur_enabled", "1")
 local motion_blur_mult = CreateConVar("cl_screenshake_motion_blur_mult", "1")
+
+local vm_shake_enabled = CreateConVar("cl_screenshake_viewmodel_shake_enabled", "1")
 local vm_shake_mult = CreateConVar("cl_screenshake_viewmodel_shake_mult", "1")
+
+local move_back_enabled = CreateConVar("cl_screenshake_move_back_enabled", "1")
+local move_back_mult = CreateConVar("cl_screenshake_move_back_mult", "1")
 
 local frac = 0
 
@@ -25,6 +34,9 @@ local custom_mult = {}
 
 local previous_ammo = 0
 local previous_weapon = NULL
+
+local move_push = 0
+local move_push_c = 0
 
 USS_CALC = false
 
@@ -158,12 +170,13 @@ local vm_shake_target = Angle()
 local vm_shake = Angle()
 
 hook.Add("CalcViewModelView", "uss_apply_vm", function(weapon, vm, old_pos, old_ang, pos, ang) 
+	if not vm_shake_enabled:GetBool() then return end
+
 	if frac <= 0 then return end
 
 	vm_shake_target = Angle(0, 0, shake.z * -5 * vm_shake_mult:GetFloat())
 	vm_shake = LerpAngle(FrameTime() * 10, vm_shake, vm_shake_target)
 	ang:Add(vm_shake)
-
 end)
 
 hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, zfar)
@@ -241,6 +254,8 @@ local function on_primary_attack(lp, weapon)
 	shake_target = shake_target * shake_mult:GetFloat() * custom_shake
 	fov_push_target = fov_push_target * fov_mult:GetFloat() * custom_fov_push
 
+	move_push_c = move_push_c + 1
+
 	frac = 1 // the part that actually starts the shake
 end
 
@@ -266,7 +281,33 @@ hook.Add("Think", "uss_detect_fire", function()
 	previous_weapon = weapon
 end)
 
+hook.Add("CreateMove", "uss_recoil_move", function(cmd) 
+	if not enabled:GetBool() then return end
+	if not move_back_enabled:GetBool() then return end
+
+	if LocalPlayer():GetMoveType() != MOVETYPE_WALK then return end
+
+	if frac <= 0.5 then
+		move_push_c = 0
+	end
+	
+	if frac <= 0 then
+		return 
+	end
+
+	local f = math.ease.InOutQuad(frac * 0.5)
+	local resist = (move_push_c ^ 3) * (math.abs(fov_push) + math.abs(shake.z)) * FrameTime() * 5 / 20
+	local recoil = LocalPlayer():GetRunSpeed() * f * math.sqrt(math.abs(fov_push) + math.abs(shake.z)) * FrameTime() * 10
+	resist = math.min(recoil, resist)
+	local total = (recoil - resist) * move_back_mult:GetFloat()
+
+	cmd:SetForwardMove(cmd:GetForwardMove() - total)
+end)
+
 hook.Add("GetMotionBlurValues", "uss_motion_blur", function( x, y, w, z)
+	if not enabled:GetBool() then return end
+	if not motion_blur_enabled:GetBool() then return end
+
 	if frac <= 0 then return end
 
 	w = math.abs(-fov_push / 80 * motion_blur_mult:GetFloat())
@@ -278,16 +319,21 @@ hook.Add("PopulateToolMenu", "uss_settings_populate", function()
     spawnmenu.AddToolMenuOption("Options", "uss_tool", "uss_main_options", "Settings", nil, nil, function(panel)
         panel:ClearControls()
 
-		panel:CheckBox("Enabled","cl_screenshake_enabled")
-		panel:CheckBox("Ignore Weapon Recoil","cl_screenshake_ignore_weapon_base")
-		panel:CheckBox("Force compatibility mode", "cl_screenshake_hook_compatibility")
+		panel:CheckBox("Enabled", enabled:GetName())
+		panel:CheckBox("Motion Blur", motion_blur_enabled:GetName())
+		panel:CheckBox("Viewmodel Shake", vm_shake_enabled:GetName())
+		panel:CheckBox("Recoil Move", move_back_enabled:GetName())
+		panel:CheckBox("Ignore Weapon Recoil", ignore_weapon_base:GetName())
+		panel:CheckBox("Force compatibility mode", hook_compatibility:GetName())
+		
+		panel:NumSlider("Default Shake Value", default_shake_target:GetName(), -30, 30, 1)
+		panel:NumSlider("Default Fov Push Value", default_fov_push:GetName(), -10, 10, 1)
 
-		panel:NumSlider("Fov Push Multiplier", "cl_screenshake_fov_mult", 0, 10, 2)
-		panel:NumSlider("Shake Multiplier", "cl_screenshake_shake_mult", 0, 10, 2)
-		panel:NumSlider("Viewmodel Shake Multiplier", "cl_screenshake_viewmodel_shake_mult", 0, 10, 2)
-		panel:NumSlider("Default Shake Value", "cl_screenshake_default_shake_target", -30, 30, 1)
-		panel:NumSlider("Default Fov Push Value", "cl_screenshake_default_fov_push", -10, 10, 2)
-		panel:NumSlider("Motion Blur Multiplier", "cl_screenshake_motion_blur_mult", 0, 10, 2)
+		panel:NumSlider("Fov Push Multiplier", fov_mult:GetName(), 0, 10, 2)
+		panel:NumSlider("Shake Multiplier", shake_mult:GetName(), 0, 10, 2)
+		panel:NumSlider("Motion Blur Multiplier", motion_blur_mult:GetName(), 0, 10, 2)
+		panel:NumSlider("Viewmodel Shake Multiplier", vm_shake_mult:GetName(), 0, 10, 2)
+		panel:NumSlider("Recoil Move Multiplier", move_back_mult:GetName(), 0, 10, 2)
     end)
 end)
 
