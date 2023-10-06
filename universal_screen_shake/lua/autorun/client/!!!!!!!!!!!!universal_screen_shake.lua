@@ -5,6 +5,7 @@ local hook_compatibility = CreateConVar("cl_screenshake_hook_compatibility", "0"
 
 local fov_mult = CreateConVar("cl_screenshake_fov_mult", "1", FCVAR_ARCHIVE)
 local shake_mult = CreateConVar("cl_screenshake_shake_mult", "1", FCVAR_ARCHIVE)
+local shake_pitch_mult = CreateConVar("cl_screenshake_shake_pitch_mult", "1", FCVAR_ARCHIVE)
 local default_shake_target = CreateConVar("cl_screenshake_default_shake_target", "2", FCVAR_ARCHIVE)
 local default_fov_push = CreateConVar("cl_screenshake_default_fov_push", "2", FCVAR_ARCHIVE)
 
@@ -152,6 +153,7 @@ hook.Add("Think", "uss_calculate", function()
 	flip_shake = Lerp(FrameTime() * 60 * decay_mult:GetFloat(), flip_shake, target_flip_shake)
 	flip_fov = Lerp(FrameTime() * 60 * decay_mult:GetFloat(), flip_fov, target_flip_fov)
 
+	shake.x = unclamped_lerp(elastic_quad_ease(frac), 0, shake_target) * 0.5 * shake_pitch_mult:GetFloat()
 	shake.z = unclamped_lerp(elastic_quad_ease(frac), 0, shake_target) * flip_shake
 	fov_push = unclamped_lerp(elastic_quad_ease(frac), 0, fov_push_target) * flip_fov
 
@@ -337,6 +339,7 @@ hook.Add("PopulateToolMenu", "uss_settings_populate", function()
 
 		panel:NumSlider("Fov Push Multiplier", fov_mult:GetName(), 0, 10, 2)
 		panel:NumSlider("Shake Multiplier", shake_mult:GetName(), 0, 10, 2)
+		panel:NumSlider("Pitch Shake Multiplier", shake_pitch_mult:GetName(), 0, 10, 2)
 		panel:NumSlider("Motion Blur Multiplier", motion_blur_mult:GetName(), 0, 10, 2)
 		panel:NumSlider("Viewmodel Shake Multiplier", vm_shake_mult:GetName(), 0, 10, 2)
 		panel:NumSlider("Recoil Move Multiplier", move_back_mult:GetName(), 0, 10, 2)
