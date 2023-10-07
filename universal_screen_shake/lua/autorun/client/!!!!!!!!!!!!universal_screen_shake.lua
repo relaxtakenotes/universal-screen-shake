@@ -41,6 +41,12 @@ local compatible = true
 
 local custom_mult = {}
 
+if not file.Exists("uss_custom_mult.json", "DATA") then
+	file.Write("uss_custom_mult.json", "{}") 
+end
+
+custom_mult = util.JSONToTable(file.Read("uss_custom_mult.json"))
+
 local previous_ammo = 0
 local previous_weapon = NULL
 
@@ -130,12 +136,6 @@ concommand.Add("cl_screenshake_reset_custom_mult", function(ply, cmd, args, arg_
 end)
 
 hook.Add("InitPostEntity", "uss_load_mults", function()
-	if not file.Exists("uss_custom_mult.json", "DATA") then
-		file.Write("uss_custom_mult.json", "{}") 
-	end
-	
-	custom_mult = util.JSONToTable(file.Read("uss_custom_mult.json"))
-
 	if not GetConVar("mat_motion_blur_enabled"):GetBool() then
 		LocalPlayer():ConCommand("mat_motion_blur_enabled 1")
 		LocalPlayer():ConCommand("mat_motion_blur_strength 0")
@@ -215,10 +215,10 @@ end)
 local function on_primary_attack(lp, weapon)
 	local weapon_class = weapon:GetClass()
 
-	if ignore_weapon_base:GetBool() then
-		shake_target = default_shake_target:GetFloat()
-		fov_push_target = default_fov_push:GetFloat()
-	else
+	shake_target = default_shake_target:GetFloat()
+	fov_push_target = default_fov_push:GetFloat()
+
+	if not ignore_weapon_base:GetBool() then
 		if string.StartsWith(weapon_class, "arc9_") and isfunction(weapon.GetProcessedValue) then
 			local recoil = (weapon:GetProcessedValue("RecoilUp") + weapon:GetProcessedValue("RecoilSide")) * weapon:GetProcessedValue("Recoil") * 0.75
 
