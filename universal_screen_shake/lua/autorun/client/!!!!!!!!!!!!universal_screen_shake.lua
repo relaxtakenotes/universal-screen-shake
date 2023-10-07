@@ -133,6 +133,7 @@ hook.Add("InitPostEntity", "uss_load_mults", function()
 	if not file.Exists("uss_custom_mult.json", "DATA") then
 		file.Write("uss_custom_mult.json", "{}") 
 	end
+	
 	custom_mult = util.JSONToTable(file.Read("uss_custom_mult.json"))
 
 	if not GetConVar("mat_motion_blur_enabled"):GetBool() then
@@ -153,13 +154,14 @@ hook.Add("Think", "uss_calculate", function()
 	flip_shake = Lerp(FrameTime() * 60 * decay_mult:GetFloat(), flip_shake, target_flip_shake)
 	flip_fov = Lerp(FrameTime() * 60 * decay_mult:GetFloat(), flip_fov, target_flip_fov)
 
-	shake.x = unclamped_lerp(elastic_quad_ease(frac), 0, shake_target) * 0.5 * shake_pitch_mult:GetFloat()
-	shake.z = unclamped_lerp(elastic_quad_ease(frac), 0, shake_target) * flip_shake
-	fov_push = unclamped_lerp(elastic_quad_ease(frac), 0, fov_push_target) * flip_fov
+	local f = elastic_quad_ease(frac)
 
-	//if math.abs(shake.z) < 0.001 and math.abs(fov_push) < 0.001 then
-	//	frac = 0
-	//end
+	if compatible then
+		shake.x = unclamped_lerp(f, 0, shake_target) * 0.5 * shake_pitch_mult:GetFloat()
+	end
+
+	shake.z = unclamped_lerp(f, 0, shake_target) * flip_shake
+	fov_push = unclamped_lerp(f, 0, fov_push_target) * flip_fov
 	
 	if not compatible then
 		if frac <= 0 and not fov_reset then
@@ -258,7 +260,7 @@ local function on_primary_attack(lp, weapon)
 
 	local custom_shake = 1
 	local custom_fov_push = 1
-	if custom_mult[weapon_class] then
+	if custom_mult[weapon_class] and custom_mult[weapon_class][1] and custom_mult[weapon_class][2] then
 		custom_shake = custom_mult[weapon_class][1]
 		custom_fov_push = custom_mult[weapon_class][2]
 	end
