@@ -199,14 +199,15 @@ hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, 
 	USS_CALC = true
 	local base_view = hook.Run("CalcView", ply, origin, angles, fov, znear, zfar)
 	if base_view then
-		origin, angles, fov, znear, zfar = base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar
+		origin, angles, fov, znear, zfar, drawviewer = base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false
 	end
 	USS_CALC = false
 
 	local view = {
 		origin = origin,
 		angles = angles + shake,
-		fov = fov + fov_push
+		fov = fov + fov_push,
+		drawviewer = drawviewer
 	}
 
 	return view
