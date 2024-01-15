@@ -208,7 +208,6 @@ hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, 
 			continue 
 		end
 		local ret = func(ply, base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false)
-		if not ret then break end // someone else is doing the same trick, let them finish. seems counterintuitive to me but hey, it works
 		base_view = ret or base_view
 	end
 
