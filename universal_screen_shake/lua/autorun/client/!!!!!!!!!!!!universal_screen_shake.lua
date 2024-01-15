@@ -194,20 +194,35 @@ hook.Add("CalcViewModelView", "uss_apply_vm", function(weapon, vm, old_pos, old_
 end)
 
 hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, zfar)
-	if USS_CALC or not enabled:GetBool() or not compatible or frac <= 0 then return end
+	if not enabled:GetBool() or not compatible or frac <= 0 then return end
 
-	USS_CALC = true
-	local base_view = hook.Run("CalcView", ply, origin, angles, fov, znear, zfar)
+	// My guess is while hooks aren't ordered specifically, they're ordered in memory depending on when they were added
+	// We can leverage this and only run calcview hooks that are guaranteed to not run due to us returning from calcview, which (mostly) gets rid of hooks running twice
+	local base_view = {}
+	local need_to_run = false
+	for name, func in pairs(hook.GetTable()["CalcView"]) do
+		if name == "uss_apply_alt" then 
+			need_to_run = true continue 
+		end
+		if not need_to_run then 
+			continue 
+		end
+		local ret = func(ply, base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false)
+		if not ret then break end // someone else is doing the same trick, let them finish. seems counterintuitive to me but hey, it works
+		base_view = ret or base_view
+	end
+
 	if base_view then
 		origin, angles, fov, znear, zfar, drawviewer = base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false
 	end
-	USS_CALC = false
 
 	local view = {
 		origin = origin,
 		angles = angles + shake,
 		fov = fov + fov_push,
-		drawviewer = drawviewer
+		drawviewer = drawviewer,
+		znear = znear,
+		zfar = zfar
 	}
 
 	return view
