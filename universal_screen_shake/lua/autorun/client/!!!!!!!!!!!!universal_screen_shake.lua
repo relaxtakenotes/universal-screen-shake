@@ -1,3 +1,13 @@
+hook.Add("InitPostEntity", "MissingAddonMessage" .. math.random(0, 1000), function() 
+    if not UNPOOPED_CALCVIEW then
+        Derma_Message(
+            "Hi. To use this mod, you need to install Extended CalcView by relaxtakenotes.\nOtherwise, nothing will happen.", 
+            "Smooth Out Stairs", 
+            "ok, bugger off"
+        )
+    end
+end)
+
 local enabled = CreateConVar("cl_screenshake_enabled", "1", FCVAR_ARCHIVE)
 
 local ignore_weapon_base = CreateConVar("cl_screenshake_ignore_weapon_base", "0", FCVAR_ARCHIVE)
@@ -42,7 +52,7 @@ local compatible = true
 local custom_mult = {}
 
 if not file.Exists("uss_custom_mult.json", "DATA") then
-	file.Write("uss_custom_mult.json", "{}") 
+	file.Write("uss_custom_mult.json", "{}")
 end
 
 custom_mult = util.JSONToTable(file.Read("uss_custom_mult.json"))
@@ -64,10 +74,10 @@ local function calculate_compatibility()
 	if IsValid(_weapon) and isfunction(_weapon.GetClass) then
 		current_weapon = _weapon:GetClass()
 	end
-	
-	if not current_weapon or string.StartsWith(current_weapon, "mg_") then 
-		compatible = false 
-		return 
+
+	if not current_weapon or string.StartsWith(current_weapon, "mg_") then
+		compatible = false
+		return
 	end
 
 	compatible = not hook_compatibility:GetBool()
@@ -109,14 +119,14 @@ concommand.Add("cl_screenshake_set_custom_mult", function(ply, cmd, args, arg_st
 
 	custom_mult[weapon_class] = {shake_mult, fov_mult}
 
-	file.Write("uss_custom_mult.json", util.TableToJSON(custom_mult, true)) 
+	file.Write("uss_custom_mult.json", util.TableToJSON(custom_mult, true))
 
 	print(tostring(weapon_class)..": "..tostring(shake_mult)..", "..tostring(fov_mult))
 end)
 
 concommand.Add("cl_screenshake_reset_custom_mult", function(ply, cmd, args, arg_str)
 	_usage = "Usage: cl_screenshake_reset_custom_mult weapon_class\nIf weapon_class isn't provided, the current weapon is used."
-	
+
 	print(_usage)
 
 	local weapon_class = args[1] or NULL
@@ -130,7 +140,7 @@ concommand.Add("cl_screenshake_reset_custom_mult", function(ply, cmd, args, arg_
 
 	custom_mult[weapon_class] = nil
 
-	file.Write("uss_custom_mult.json", util.TableToJSON(custom_mult, true)) 
+	file.Write("uss_custom_mult.json", util.TableToJSON(custom_mult, true))
 
 	print(weapon_class..": removed")
 end)
@@ -144,7 +154,7 @@ end)
 
 hook.Add("Think", "uss_calculate", function()
 	if not enabled:GetBool() then return end
-	
+
 	local lp = LocalPlayer()
 
 	calculate_compatibility()
@@ -162,7 +172,7 @@ hook.Add("Think", "uss_calculate", function()
 
 	shake.z = unclamped_lerp(f, 0, shake_target) * flip_shake
 	fov_push = unclamped_lerp(f, 0, fov_push_target) * flip_fov
-	
+
 	if not compatible then
 		if frac <= 0 and not fov_reset then
 			lp:SetFOV(0, 0.5)
@@ -184,57 +194,20 @@ end)
 local vm_shake_target = Angle()
 local vm_shake = Angle()
 
-hook.Add("CalcViewModelView", "uss_apply_vm", function(weapon, vm, old_pos, old_ang, pos, ang) 
+hook.Add("CalcViewModelViewEx", "uss_apply_vm", function(data)
 	if not vm_shake_enabled:GetBool() or frac <= 0 then return end
 
 	vm_shake_target = Angle(0, 0, shake.z * -5 * vm_shake_mult:GetFloat())
 	vm_shake = LerpAngle(FrameTime() * 10, vm_shake, vm_shake_target)
 
-	ang:Add(vm_shake)
+	data:GetAngles():Add(vm_shake)
 end)
 
-hook.Add("CalcView", "uss_apply_alt", function(ply, origin, angles, fov, znear, zfar)
+hook.Add("CalcViewEx", "uss_apply_alt", function(data)
 	if not enabled:GetBool() or not compatible or frac <= 0 then return end
 
-	// My guess is while hooks aren't ordered specifically, they're ordered in memory depending on when they were added
-	// We can leverage this and only run calcview hooks that are guaranteed to not run due to us returning from calcview, which (mostly) gets rid of hooks running twice
-	local base_view = {}
-	local need_to_run = false
-	for name, func in pairs(hook.GetTable()["CalcView"]) do
-		if name == "uss_apply_alt" then 
-			need_to_run = true continue 
-		end
-		if not need_to_run then 
-			continue 
-		end
-		local ret = func(ply, base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false)
-		base_view = ret or base_view
-	end
-
-	local weapon = ply:GetActiveWeapon()
-
-	if IsValid(weapon) then
-		local func = weapon.CalcView
-		if func then
-			local origin, angles, fov = func(weapon, ply, base_view.origin or origin, base_view.angles or angles, base_view.fov or fov)
-			base_view.origin, base_view.angles, base_view.fov = origin or base_view.origin, angles or base_view.angles, fov or base_view.fov
-		end
-	end
-
-	if base_view then
-		origin, angles, fov, znear, zfar, drawviewer = base_view.origin or origin, base_view.angles or angles, base_view.fov or fov, base_view.znear or znear, base_view.zfar or zfar, base_view.drawviewer or false
-	end
-
-	local view = {
-		origin = origin,
-		angles = angles + shake,
-		fov = fov + fov_push,
-		drawviewer = drawviewer,
-		znear = znear,
-		zfar = zfar
-	}
-
-	return view
+	data:GetAngles():Add(shake)
+	data:SetFOV(data:GetFOV() + fov_push)
 end)
 
 local function on_primary_attack(lp, weapon)
@@ -271,14 +244,14 @@ local function on_primary_attack(lp, weapon)
 			recoil = math.max(recoil, 0.3)
 
 			shake_target = math.Clamp(recoil * 2, -30, 30)
-			fov_push_target = math.Clamp(recoil * 3, -30, 30)			
+			fov_push_target = math.Clamp(recoil * 3, -30, 30)
 		end
 	end
 
 	if math.Rand(0, 1) > 0.7 then
 		target_flip_shake = target_flip_shake * -1
 	end
-	
+
 	if math.Rand(0, 1) > 0.7 then
 		target_flip_fov = target_flip_fov * -1
 	end
@@ -315,18 +288,18 @@ hook.Add("Think", "uss_detect_fire", function()
 	if (previous_ammo - current_ammo < 2 or current_ammo != 0) and current_ammo < previous_ammo and not (weapon != previous_weapon) then
 		on_primary_attack(lp, weapon)
 	end
-	
+
 	previous_ammo = current_ammo
 	previous_weapon = weapon
 end)
 
-hook.Add("CreateMove", "uss_recoil_move", function(cmd) 
+hook.Add("CreateMove", "uss_recoil_move", function(cmd)
 	if not enabled:GetBool() or not move_back_enabled:GetBool() or LocalPlayer():GetMoveType() != MOVETYPE_WALK then return end
 
 	if frac <= 0.5 then
 		move_push_c = 0
 	end
-	
+
 	if frac <= 0 then return end
 
 	local f = math.ease.InOutQuad(frac * 0.5)
@@ -358,7 +331,7 @@ hook.Add("PopulateToolMenu", "uss_settings_populate", function()
 		panel:CheckBox("Force compatibility mode", hook_compatibility:GetName())
 
 		panel:ControlHelp("")
-		
+
 		panel:NumSlider("Default Shake Value", default_shake_target:GetName(), -30, 30, 1)
 		panel:NumSlider("Default Fov Push Value", default_fov_push:GetName(), -10, 10, 1)
 
@@ -374,6 +347,6 @@ hook.Add("PopulateToolMenu", "uss_settings_populate", function()
     end)
 end)
 
-hook.Add("AddToolMenuCategories", "uss_add_category", function() 
+hook.Add("AddToolMenuCategories", "uss_add_category", function()
     spawnmenu.AddToolCategory("Options", "uss_tool", "Screen Shake")
 end)
